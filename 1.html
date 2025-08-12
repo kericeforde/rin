@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Birthday - Maze Version (Wild West)</title>
+
+    <!-- Fonts + Lottie + Phaser -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600&family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+    <style>
+      :root {
+        --glass-bg: rgba(18, 18, 22, 0.38);
+        --accent: #ff5959;
+        --muted: #d7d7d7cc;
+        --card-border: rgba(255, 89, 89, 0.22);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: "Montserrat", sans-serif;
+        background: url("img.png") center/cover no-repeat fixed;
+        color: #eee;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 1100px;
+        margin: 28px auto;
+        padding: 20px;
+      }
+      h1 {
+        font-family: "Press Start 2P";
+        color: var(--accent);
+        text-align: center;
+        margin: 0 0 6px;
+        text-shadow: 0 0 12px rgba(255, 80, 80, 0.35);
+      }
+      h2 {
+        text-align: center;
+        color: #ff9b9b55;
+        margin: 0 0 18px;
+        font-size: 14px;
+      }
+
+      /* Glass card */
+      .card {
+        background: var(--glass-bg);
+        border-radius: 16px;
+        padding: 18px;
+        margin-bottom: 18px;
+        border: 1px solid var(--card-border);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.5),
+          inset 0 0 60px rgba(255, 89, 89, 0.06);
+      }
+      #message {
+        color: var(--muted);
+        line-height: 1.5;
+        font-size: 15px;
+      }
+
+      /* Coupon - plain text */
+      #coupon {
+        display: inline-block;
+        background: linear-gradient(90deg, #2d2f38, #1e1f24);
+        padding: 12px 18px;
+        border-radius: 10px;
+        color: #ffdca8;
+        font-weight: 700;
+        letter-spacing: 2px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+        user-select: text;
+      }
+
+      /* Mini-game card and cowboy placeholder */
+      #mini-card {
+        text-align: center;
+        position: relative;
+      }
+      #cowboy-placeholder {
+        width: 120px;
+        height: 120px;
+        margin: 12px auto;
+        display: block;
+        border-radius: 12px;
+        background: url("cowboy.webp") center/contain no-repeat;
+        background-size: contain;
+        /* border: 1px solid rgba(255, 255, 255, 0.03); */
+        cursor: pointer;
+        /* box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6); */
+      }
+      #score {
+        margin-top: 10px;
+        font-weight: 700;
+        color: #ffc4c4;
+      }
+
+      /* Full-screen game container (hidden until transition) */
+      #game-screen {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 8000;
+        background: rgba(0, 0, 0, 0.6);
+      }
+      #phaser-container {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* UI overlay inside game */
+      .game-ui {
+        position: fixed;
+        top: 1px;
+        right: 18px;
+        z-index: 9000;
+        display: flex;
+        gap: 12px;
+      }
+      .ui-card {
+        background: rgba(20, 20, 26, 0.45);
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 89, 89, 0.18);
+        color: #ffd;
+        font-weight: 700;
+        backdrop-filter: blur(8px);
+      }
+      #back-btn {
+        cursor: pointer;
+        background: var(--accent);
+        border: none;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-weight: 700;
+      }
+
+      /* Lottie transition overlay */
+      #transition-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0.2),
+          rgba(0, 0, 0, 0.6)
+        );
+      }
+      #confetti-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 11000;
+      }
+
+      /* responsive */
+      @media (max-width: 720px) {
+        main {
+          padding: 14px;
+        }
+        h1 {
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>🎉 Happy 23rd Birthday! 🤠</h1>
+      <h2>Wild West Birthday Adventure</h2>
+
+      <section class="card" aria-label="birthday message">
+        <div id="message" tabindex="0">
+          Dear Theo— Here’s a small wild-wested journey to celebrate 23 years of
+          grit and brilliance. Saddle up, explore, and play like a true outlaw.
+          May your birthday be as legendary and unforgettable as Arthur Morgan’s
+          ride.
+          <br /><br />
+        </div>
+      </section>
+
+      <section class="card" id="coupon-card" aria-label="coupon">
+        <strong>Birthday Coupon:</strong>
+        <div id="coupon" aria-label="Birthday coupon text">
+          A HEARTFELT HUG and....
+        </div>
+        <div style="margin-top: 8px; color: #ffb9b9aa; font-size: 13px">
+          10. .22 2 8 16. .16 4. .11 3 2 23. .22 10 16 20. .5 10 17 17 2 16.
+        </div>
+      </section>
+
+      <section class="card" id="mini-card" aria-label="mini-game">
+        <h3
+          style="font-family: 'Press Start 2P', cursive; color: var(--accent)"
+        >
+          Mini-Game: Catch the Cowboy
+        </h3>
+        <!-- placeholder for the PNG you'll add -->
+        <div
+          id="cowboy-placeholder"
+          role="button"
+          aria-label="Cowboy placeholder - click to catch"
+        ></div>
+        <div id="score" aria-live="polite">Caught: 0 / 3</div>
+        <div style="margin-top: 8px; color: #ffbaba88; font-size: 13px">
+          When you catch the cowboy 3 times, the full screen Maze game will
+          load. Press the back button to return.
+        </div>
+      </section>
+    </main>
+
+    <!-- Full-width Game Screen (Phaser) -->
+    <div id="game-screen" role="application" aria-hidden="true">
+      <div id="phaser-container"></div>
+      <div class="game-ui">
+        <div class="ui-card" id="timer">
+          Time: <span id="time-val">0</span>s
+        </div>
+        <div class="ui-card" id="steps">
+          Steps: <span id="steps-val">0</span>
+        </div>
+        <button id="back-btn" class="ui-card" aria-label="Back to birthday">
+          Back
+        </button>
+      </div>
+    </div>
+
+    <!-- Transition (Lottie) -->
+    <div id="transition-overlay" aria-hidden="true">
+      <lottie-player
+        id="ride-lottie"
+        src="https://assets4.lottiefiles.com/packages/lf20_6ixv3z6z.json"
+        background="transparent"
+        speed="0.9"
+        style="width: 360px; height: 360px"
+        loop
+        autoplay
+      ></lottie-player>
+    </div>
+
+    <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+    <script>
+      /* -------------------
+  Shared page/game logic
+   - cowboy placeholder click counts (3 catches)
+   - on win: animate transition, then start Phaser maze full-screen
+   - back button returns to main page (destroys Phaser)
+   - confetti on page load and on win
+--------------------- */
+
+      const placeholder = document.getElementById("cowboy-placeholder");
+      const scoreEl = document.getElementById("score");
+      let caught = 0;
+      const required = 3;
+
+      placeholder.addEventListener("click", () => handleCatch());
+      placeholder.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" || e.key === " ") handleCatch();
+      });
+
+      function handleCatch() {
+        if (caught >= required) return;
+        caught++;
+        scoreEl.textContent = `Caught: ${caught} / ${required}`;
+        // quick scale animation
+        placeholder.animate(
+          [
+            { transform: "scale(1)" },
+            { transform: "scale(1.15)" },
+            { transform: "scale(1)" },
+          ],
+          { duration: 260 }
+        );
+        if (caught >= required) triggerWin();
+      }
+
+      /* Confetti (lightweight) */
+      const confettiCanvas = document.getElementById("confetti-canvas");
+      const ctx = confettiCanvas.getContext("2d");
+      function resizeCanvas() {
+        confettiCanvas.width = innerWidth;
+        confettiCanvas.height = innerHeight;
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      let confetti = [];
+      function Confetti() {
+        this.x = Math.random() * innerWidth;
+        this.y = Math.random() * -innerHeight;
+        this.r = Math.random() * 6 + 3;
+        this.c =
+          Math.random() > 0.5
+            ? `hsl(${Math.random() * 30},80%,60%)`
+            : `hsl(${200 + Math.random() * 60},70%,60%)`;
+        this.sp = 1 + Math.random() * 3;
+      }
+      Confetti.prototype.update = function () {
+        this.y += this.sp;
+        this.x += Math.sin(this.y / 20);
+        if (this.y > innerHeight) this.y = -10;
+      };
+      Confetti.prototype.draw = function () {
+        ctx.beginPath();
+        ctx.fillStyle = this.c;
+        ctx.fillRect(this.x, this.y, this.r, this.r * 0.6);
+        ctx.closePath();
+      };
+
+      function startConfetti(n = 140) {
+        confetti = [];
+        for (let i = 0; i < n; i++) confetti.push(new Confetti());
+        (function loop() {
+          ctx.clearRect(0, 0, innerWidth, innerHeight);
+          confetti.forEach((c) => {
+            c.update();
+            c.draw();
+          });
+          if (confetti.length) requestAnimationFrame(loop);
+        })();
+        setTimeout(() => (confetti = []), 7000);
+      }
+
+      // run confetti on load
+      window.addEventListener("load", () => startConfetti(90));
+
+      /* Transition & Phaser Maze init */
+      const overlay = document.getElementById("transition-overlay");
+      const gameScreen = document.getElementById("game-screen");
+      const backBtn = document.getElementById("back-btn");
+      let phaserGame = null;
+
+      // Triggered when player wins the mini-game
+      function triggerWin() {
+        // show transition overlay with Lottie, then launch Phaser after delay
+        overlay.style.display = "flex";
+        overlay.setAttribute("aria-hidden", "false");
+        startConfetti(120);
+        setTimeout(() => {
+          overlay.style.display = "none";
+          overlay.setAttribute("aria-hidden", "true");
+          openMazeGame();
+        }, 1400);
+      }
+
+      backBtn.addEventListener("click", () => {
+        // stop/destroy phaser and hide screen
+        if (phaserGame && phaserGame.destroy) {
+          phaserGame.destroy(true);
+          phaserGame = null;
+        }
+        gameScreen.style.display = "none";
+        gameScreen.setAttribute("aria-hidden", "true");
+        // reset caught to allow replay if wanted (optional)
+        caught = 0;
+        scoreEl.textContent = `Caught: ${caught} / ${required}`;
+      });
+
+      /* ------------------------
+  Phaser Maze Game
+  - simple randomized DFS maze generator on a grid
+  - player moves with arrow keys, reach goal triggers "you win"
+-------------------------*/
+      function openMazeGame() {
+        gameScreen.style.display = "block";
+        gameScreen.setAttribute("aria-hidden", "false");
+        // Phaser game config
+        const config = {
+          type: Phaser.AUTO,
+          parent: "phaser-container",
+          width: window.innerWidth,
+          height: window.innerHeight,
+          backgroundColor: "#0d0c0f",
+          physics: { default: "arcade" },
+          scale: {
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.CENTER_BOTH,
+          },
+          scene: { preload, create, update },
+        };
+
+        phaserGame = new Phaser.Game(config);
+
+        let grid,
+          tileSize = 32,
+          cols = 21,
+          rows = 13; // grid cells (odd numbers recommended)
+        let player, cursors, goal;
+        let startTime = 0,
+          timerInterval = null,
+          steps = 0;
+
+        function preload() {}
+
+        function create() {
+          // adjust cols/rows to fit viewport by tileSize (ensure odd)
+          cols = Math.floor(this.scale.width / tileSize);
+          rows = Math.floor(this.scale.height / tileSize);
+          if (cols % 2 === 0) cols--;
+          if (rows % 2 === 0) rows--;
+
+          // generate maze grid (0=wall,1=path)
+          grid = generateMaze(cols, rows);
+
+          // draw maze
+          const g = this.add.graphics();
+          g.clear();
+          g.fillStyle(0x111217);
+          g.fillRect(0, 0, this.scale.width, this.scale.height);
+
+          for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+              if (grid[y][x] === 0) {
+                // wall block
+                g.fillStyle(0x23181a);
+                g.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+              } else {
+                // floor
+                g.fillStyle(0x1d2330);
+                g.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+              }
+            }
+          }
+
+          // add goal (bottom-right-most open cell)
+          let goalPos = findOpenCellFrom(grid, cols - 2, rows - 2);
+          goal = this.add.rectangle(
+            goalPos.x * tileSize + tileSize / 2,
+            goalPos.y * tileSize + tileSize / 2,
+            tileSize * 0.7,
+            tileSize * 0.7,
+            0xffd76b
+          );
+          this.physics.add.existing(goal);
+          goal.body.setImmovable(true);
+
+          // add player at first open cell near top-left
+          let startPos = findOpenCellFrom(grid, 1, 1);
+          player = this.add.rectangle(
+            startPos.x * tileSize + tileSize / 2,
+            startPos.y * tileSize + tileSize / 2,
+            tileSize * 0.7,
+            tileSize * 0.7,
+            0xff6b6b
+          );
+          this.physics.add.existing(player);
+          player.body.setCollideWorldBounds(true);
+
+          // create collision by making immovable walls group
+          const walls = this.physics.add.staticGroup();
+          for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+              if (grid[y][x] === 0) {
+                let w = walls.create(
+                  x * tileSize + tileSize / 2,
+                  y * tileSize + tileSize / 2,
+                  null
+                );
+                w.body.setSize(tileSize, tileSize);
+                w.setVisible(false);
+              }
+            }
+          }
+          this.physics.add.collider(player, walls);
+
+          cursors = this.input.keyboard.createCursorKeys();
+
+          // timer/steps UI updates
+          startTime = Date.now();
+          document.getElementById("time-val").textContent = "0";
+          document.getElementById("steps-val").textContent = "0";
+          if (timerInterval) clearInterval(timerInterval);
+          timerInterval = setInterval(() => {
+            document.getElementById("time-val").textContent = Math.floor(
+              (Date.now() - startTime) / 1000
+            );
+          }, 250);
+
+          // camera setup: keep whole game visible (not necessary but keep)
+          this.cameras.main.setBounds(0, 0, cols * tileSize, rows * tileSize);
+          this.cameras.main.centerOn(player.x, player.y);
+
+          // win overlap check
+          this.physics.add.overlap(
+            player,
+            goal,
+            () => {
+              // show confetti + message, then return to page automatically in few sec
+              startConfetti(180);
+              setTimeout(() => {
+                backBtn.click();
+                alert("Congrats — you finished the maze! 🎉");
+              }, 700);
+            },
+            null,
+            this
+          );
+        }
+
+        function update() {
+          const speed = 140;
+          let vx = 0,
+            vy = 0;
+          if (cursors.left.isDown) {
+            vx = -speed;
+            steps++;
+          }
+          if (cursors.right.isDown) {
+            vx = speed;
+            steps++;
+          }
+          if (cursors.up.isDown) {
+            vy = -speed;
+            steps++;
+          }
+          if (cursors.down.isDown) {
+            vy = speed;
+            steps++;
+          }
+          player.body.setVelocity(vx, vy);
+          if (vx !== 0 || vy !== 0) {
+            document.getElementById("steps-val").textContent =
+              parseInt(document.getElementById("steps-val").textContent) + 1;
+          }
+        }
+
+        // Maze generator (depth-first recursive backtracker) - returns grid of 0/1
+        function generateMaze(w, h) {
+          // ensure odd dims
+          if (w % 2 === 0) w--;
+          if (h % 2 === 0) h--;
+          let maze = Array.from({ length: h }, () => Array(w).fill(0));
+          // start at 1,1
+          const stack = [];
+          function neighbors(cx, cy) {
+            const dirs = [
+              [2, 0],
+              [-2, 0],
+              [0, 2],
+              [0, -2],
+            ];
+            const out = [];
+            for (const d of dirs) {
+              const nx = cx + d[0],
+                ny = cy + d[1];
+              if (nx > 0 && ny > 0 && nx < w && ny < h && maze[ny][nx] === 0)
+                out.push([nx, ny]);
+            }
+            return out;
+          }
+          let sx = 1,
+            sy = 1;
+          maze[sy][sx] = 1;
+          stack.push([sx, sy]);
+          while (stack.length) {
+            let [cx, cy] = stack[stack.length - 1];
+            let nbs = neighbors(cx, cy);
+            if (nbs.length) {
+              let [nx, ny] = nbs[Math.floor(Math.random() * nbs.length)];
+              // knock wall between
+              let mx = (cx + nx) / 2,
+                my = (cy + ny) / 2;
+              maze[my][mx] = 1;
+              maze[ny][nx] = 1;
+              stack.push([nx, ny]);
+            } else {
+              stack.pop();
+            }
+          }
+          return maze;
+        }
+
+        function findOpenCellFrom(grid, sx, sy) {
+          for (let y = sy; y < grid.length; y++) {
+            for (let x = sx; x < grid[0].length; x++) {
+              if (grid[y][x] === 1) return { x, y };
+            }
+          }
+          // fallback
+          return { x: sx, y: sy };
+        }
+      } // end openMazeGame
+    </script>
+  </body>
+</html>
